@@ -97,6 +97,12 @@ public:
 
 	Mesh _monkeyMesh;
 
+	VkImageView _depthImageView;
+	AllocatedImage _depthImage;
+
+	//the format for the depth image
+	VkFormat _depthFormat;
+
 	bool _isInitialized{ false };
 	int _frameNumber {0};
 
@@ -144,6 +150,8 @@ public:
 	std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
 	VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
 	VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
+
+	VkPipelineDepthStencilStateCreateInfo _depthStencil;
 
 	VkViewport _viewport;
 	VkRect2D _scissor;
