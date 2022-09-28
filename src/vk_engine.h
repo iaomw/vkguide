@@ -3,8 +3,13 @@
 
 #pragma once
 
-#include <vk_types.h>
+//#include <vk_types.h>
+#include <vk_mesh.h>
 #include "VkBootstrap.h"
+//#include "vk_mem_alloc.h"
+
+#include <glm/glm.hpp>
+#include <glm/gtx/transform.hpp>
 
 #include <deque>
 #include <functional>
@@ -41,10 +46,16 @@ struct DeletionQueue
 	}
 };
 
+struct MeshPushConstants {
+	glm::vec4 data;
+	glm::mat4 render_matrix;
+};
+
 class VulkanEngine {
 public:
 
 	vkb::Instance vkb_inst;
+	VmaAllocator _allocator; //vma lib allocator
 
 	// --- omitted ---
     VkInstance _instance; // Vulkan library handle
@@ -74,10 +85,17 @@ public:
 	VkFence _renderFence;
 
 	VkPipeline _trianglePipeline;
-	VkPipelineLayout _trianglePipelineLayout;
 	VkPipeline _redTrianglePipeline;
 
+	VkPipelineLayout _trianglePipelineLayout;
+	VkPipelineLayout _meshPipelineLayout;
+	
+	VkPipeline _meshPipeline;
+	Mesh _triangleMesh;
+
 	DeletionQueue _mainDeletionQueue;
+
+	Mesh _monkeyMesh;
 
 	bool _isInitialized{ false };
 	int _frameNumber {0};
@@ -114,6 +132,9 @@ private:
 	bool load_shader_module(const char* filePath, VkShaderModule* outShaderModule);
 
 	void init_pipelines();
+
+	void load_meshes();
+	void upload_mesh(Mesh& mesh);
 };
 
 
