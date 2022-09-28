@@ -6,6 +6,9 @@
 #include <vk_types.h>
 #include "VkBootstrap.h"
 
+#include <fstream>
+#include <iostream>
+
 #define VK_CHECK(x)                                                 \
 	do                                                              \
 	{                                                               \
@@ -35,6 +38,21 @@ public:
 	//array of image-views from the swapchain
 	std::vector<VkImageView> _swapchainImageViews;
 
+	VkQueue _graphicsQueue; //queue we will submit to
+	uint32_t _graphicsQueueFamily; //family of that queue
+
+	VkCommandPool _commandPool; //the command pool for our commands
+	VkCommandBuffer _mainCommandBuffer; //the buffer we will record into
+
+	VkRenderPass _renderPass;
+	std::vector<VkFramebuffer> _framebuffers;
+
+	VkSemaphore _presentSemaphore, _renderSemaphore;
+	VkFence _renderFence;
+
+	VkPipeline _trianglePipeline;
+	VkPipelineLayout _trianglePipelineLayout;
+
 	bool _isInitialized{ false };
 	int _frameNumber {0};
 
@@ -57,4 +75,34 @@ public:
 private:
 	void init_vulkan();
 	void init_swapchain();
+
+	void init_commands();
+
+	void init_default_renderpass();
+	void init_framebuffers();
+
+	void init_sync_structures();
+	//loads a shader module from a spir-v file. Returns false if it errors
+	bool load_shader_module(const char* filePath, VkShaderModule* outShaderModule);
+
+	void init_pipelines();
+};
+
+
+class PipelineBuilder {
+public:
+
+	std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
+	VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
+	VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
+
+	VkViewport _viewport;
+	VkRect2D _scissor;
+
+	VkPipelineRasterizationStateCreateInfo _rasterizer;
+	VkPipelineColorBlendAttachmentState _colorBlendAttachment;
+	VkPipelineMultisampleStateCreateInfo _multisampling;
+	VkPipelineLayout _pipelineLayout;
+
+	VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
 };
