@@ -184,7 +184,6 @@ VkPipelineDepthStencilStateCreateInfo vkinit::depth_stencil_create_info(bool bDe
 {
     VkPipelineDepthStencilStateCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    info.pNext = nullptr;
 
     info.depthTestEnable = bDepthTest ? VK_TRUE : VK_FALSE;
     info.depthWriteEnable = bDepthWrite ? VK_TRUE : VK_FALSE;
@@ -195,4 +194,19 @@ VkPipelineDepthStencilStateCreateInfo vkinit::depth_stencil_create_info(bool bDe
     info.stencilTestEnable = VK_FALSE;
 
     return info;
+}
+
+VkFramebufferCreateInfo vkinit::framebuffer_create_info(VkRenderPass renderPass, VkExtent2D extent)
+{
+	VkFramebufferCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	info.pNext = nullptr;
+
+	info.renderPass = renderPass;
+	info.attachmentCount = 1;
+	info.width = extent.width;
+	info.height = extent.height;
+	info.layers = 1;
+
+	return info;
 }
