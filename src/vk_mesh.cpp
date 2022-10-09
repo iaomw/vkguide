@@ -109,4 +109,6 @@ bool Mesh::load_from_obj(const char* filename)
 			index_offset += fv;
 		}
 	}
+
+	return true;
 }

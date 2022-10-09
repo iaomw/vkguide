@@ -1,4 +1,5 @@
-﻿#include "vk_engine.h"
+﻿
+#include "vk_engine.h"
 #include "VkBootstrap.h"
 
 #define VMA_IMPLEMENTATION
@@ -7,16 +8,15 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 
-#include <cstdint>
 #include <vk_types.h>
 #include <vk_initializers.h>
-#include <vulkan/vulkan_core.h>
 
-#include <iostream>
-#include <filesystem>
+// #include <fstream>
+// #include <iostream>
 
 constexpr bool bUseValidationLayers = true;
 
+//we want to immediately abort when there is an error. In normal engines this would give an error message to the user, or perform a dump of state.
 #define VK_CHECK(x)                                                    \
 	do                                                                 \
 	{                                                                  \
@@ -549,25 +549,20 @@ bool VulkanEngine::load_shader_module(const char* filePath, VkShaderModule* outS
 	return true;
 }
 
-void VulkanEngine::init_pipelines(){
-
-	auto this_path = std::filesystem::current_path();
-	std::cout << this_path << std::endl;
-
-	//compile colored triangle modules
-	VkShaderModule triangleFragShader;
-	if (!load_shader_module("../../shaders/default_lit.frag.spv", &triangleFragShader))
+void VulkanEngine::init_pipelines()
+{
+	VkShaderModule colorMeshShader;
+	if (!load_shader_module("../../shaders/default_lit.frag.spv", &colorMeshShader))
 	{
-		std::cout << "Error when building the triangle fragment shader module" << std::endl;
+		std::cout << "Error when building the colored mesh shader" << std::endl;
 	}
 
-	//compile mesh vertex shader
 	VkShaderModule meshVertShader;
 	if (!load_shader_module("../../shaders/tri_mesh_ssbo.vert.spv", &meshVertShader))
 	{
-		std::cout << "Error when building the triangle vertex shader module" << std::endl;
+		std::cout << "Error when building the mesh vertex shader module" << std::endl;
 	}
-
+	
 	//build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
 	PipelineBuilder pipelineBuilder;
 
@@ -575,36 +570,37 @@ void VulkanEngine::init_pipelines(){
 		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, meshVertShader));
 
 	pipelineBuilder._shaderStages.push_back(
-		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, triangleFragShader));
+		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, colorMeshShader));
 
-	//build the pipeline layout that controls the inputs/outputs of the shader
-	//we are not using descriptor sets or other systems yet, so no need to use anything other than empty default
+	//we start from just the default empty pipeline layout info
 	VkPipelineLayoutCreateInfo mesh_pipeline_layout_info = vkinit::pipeline_layout_create_info();
 
 		//setup push constants
 		VkPushConstantRange push_constant;
-		//this push constant range starts at the beginning
+		//offset 0
 		push_constant.offset = 0;
-		//this push constant range takes up the size of a MeshPushConstants struct
+		//size of a MeshPushConstant struct
 		push_constant.size = sizeof(MeshPushConstants);
-		//this push constant range is accessible only in the vertex shader
+		//for the vertex shader
 		push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 		mesh_pipeline_layout_info.pPushConstantRanges = &push_constant;
 		mesh_pipeline_layout_info.pushConstantRangeCount = 1;
 
-		VkDescriptorSetLayout setLayouts[] = { _globalSetLayout, _objectSetLayout };
+	VkDescriptorSetLayout setLayouts[] = { _globalSetLayout, _objectSetLayout };
 
-		mesh_pipeline_layout_info.setLayoutCount = 2;
-		mesh_pipeline_layout_info.pSetLayouts = setLayouts;
+	mesh_pipeline_layout_info.setLayoutCount = 2;
+	mesh_pipeline_layout_info.pSetLayouts = setLayouts;
 
-	VK_CHECK(vkCreatePipelineLayout(_device, &mesh_pipeline_layout_info, nullptr, &_meshPipelineLayout));
+	VkPipelineLayout meshPipLayout;
+	VK_CHECK(vkCreatePipelineLayout(_device, &mesh_pipeline_layout_info, nullptr, &meshPipLayout));
 
 	//hook the push constants layout
-	pipelineBuilder._pipelineLayout = _meshPipelineLayout;
+	pipelineBuilder._pipelineLayout = meshPipLayout;
 
-	//vertex input controls how to read vertices from vertex buffers. We aren't using it yet
+	//vertex input controls how to read vertices from vertex buffers. We arent using it yet
 	pipelineBuilder._vertexInputInfo = vkinit::vertex_input_state_create_info();
+
 	//input assembly is the configuration for drawing triangle lists, strips, or individual points.
 	//we are just going to draw triangle list
 	pipelineBuilder._inputAssembly = vkinit::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -641,26 +637,25 @@ void VulkanEngine::init_pipelines(){
 	pipelineBuilder._vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
 	pipelineBuilder._vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
 
-	//finally build the pipeline
-	_meshPipeline = pipelineBuilder.build_pipeline(_device, _renderPass);
+	
+	//build the mesh triangle pipeline
+	VkPipeline meshPipeline = pipelineBuilder.build_pipeline(_device, _renderPass);
 
-	create_material(_meshPipeline, _meshPipelineLayout, "defaultmesh");	
+	create_material(meshPipeline, meshPipLayout, "defaultmesh");
 
-	//destroy all shader modules, outside of the queue
 	vkDestroyShaderModule(_device, meshVertShader, nullptr);
-	vkDestroyShaderModule(_device, triangleFragShader, nullptr);
+	vkDestroyShaderModule(_device, colorMeshShader, nullptr);
 
- 	_mainDeletionQueue.push_function([=]() {
-
-		vkDestroyPipeline(_device, _meshPipeline, nullptr);
-		vkDestroyPipelineLayout(_device, _meshPipelineLayout, nullptr);
-		//destroy the pipeline layout that they use
-    });
+	_mainDeletionQueue.push_function([=]() {
+		vkDestroyPipeline(_device, meshPipeline, nullptr);
+		vkDestroyPipelineLayout(_device, meshPipLayout, nullptr);
+	});
 }
 
-VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass) {
+VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
+{
 	//make viewport state from our stored viewport and scissor.
-	//at the moment we won't support multiple viewports or scissors
+		//at the moment we wont support multiple viewports or scissors
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportState.pNext = nullptr;
@@ -729,8 +724,8 @@ void VulkanEngine::load_meshes()
 	_triangleMesh._vertices[1].color = { 0.f,1.f, 0.0f }; //pure green
 	_triangleMesh._vertices[2].color = { 0.f,1.f, 0.0f }; //pure green
 
-	auto currentPath = std::filesystem::current_path();
-	std::cout << currentPath << std::endl;
+	//auto currentPath = std::filesystem::current_path();
+	//std::cout << currentPath << std::endl;
 
     //load the monkey
 	Mesh _monkeyMesh;
@@ -863,18 +858,20 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd,RenderObject* first, int cou
 
 	Mesh* lastMesh = nullptr;
 	Material* lastMaterial = nullptr;
+	
 	for (int i = 0; i < count; i++)
 	{
 		RenderObject& object = first[i];
-		//only bind the pipeline if it doesn't match with the already bound one
+
+		//only bind the pipeline if it doesnt match with the already bound one
 		if (object.material != lastMaterial) {
 
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipeline);
 			lastMaterial = object.material;
 
-			//offset for our scene buffer
 			uint32_t uniform_offset = pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex;
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 0, 1, &get_current_frame().globalDescriptor, 0, nullptr);
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 0, 1, &get_current_frame().globalDescriptor, 1, &uniform_offset);
+		
 			//object data descriptor
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 1, 1, &get_current_frame().objectDescriptor, 0, nullptr);
 		}
@@ -897,7 +894,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd,RenderObject* first, int cou
 			lastMesh = object.mesh;
 		}
 		//we can now draw
-		vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, 0);
+		vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, i);
 	}
 }
 
@@ -1008,7 +1005,6 @@ void VulkanEngine::init_descriptors()
 
 	const size_t sceneParamBufferSize = FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUSceneData));
 	_sceneParameterBuffer = create_buffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-	
 
 	for (int i = 0; i < FRAME_OVERLAP; i++)
 	{
@@ -1060,19 +1056,19 @@ void VulkanEngine::init_descriptors()
 
 		vkUpdateDescriptorSets(_device, 3, setWrites, 0, nullptr);
 	}
-	
-	// add descriptor set layout to deletion queues
+
 	_mainDeletionQueue.push_function([&]() {
+
 		vmaDestroyBuffer(_allocator, _sceneParameterBuffer._buffer, _sceneParameterBuffer._allocation);
-		
-		vkDestroyDescriptorSetLayout(_device, _globalSetLayout, nullptr);
 		vkDestroyDescriptorSetLayout(_device, _objectSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(_device, _globalSetLayout, nullptr);
 
 		vkDestroyDescriptorPool(_device, _descriptorPool, nullptr);
 
 		for (int i = 0; i < FRAME_OVERLAP; i++)
 		{
-			vmaDestroyBuffer(_allocator, _frames[i].cameraBuffer._buffer, _frames[i].cameraBuffer._allocation);
+			vmaDestroyBuffer(_allocator,_frames[i].cameraBuffer._buffer, _frames[i].cameraBuffer._allocation);
+
 			vmaDestroyBuffer(_allocator, _frames[i].objectBuffer._buffer, _frames[i].objectBuffer._allocation);
 		}
 	});
