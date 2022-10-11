@@ -361,36 +361,25 @@ void VulkanEngine::init_commands()
 		vkDestroyCommandPool(_device, _uploadContext._commandPool, nullptr);
 	});
 
-	//allocate the default command buffer that we will use for the instant commands
+	//allocate the default command buffer that we will use for rendering
 	VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(_uploadContext._commandPool, 1);
 
-	VkCommandBuffer cmd;
 	VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &_uploadContext._commandBuffer));
 }
 
 void VulkanEngine::init_default_renderpass()
 {
-	// the renderpass will use this color attachment.
 	VkAttachmentDescription color_attachment = {};
-	//the attachment will have the format needed by the swapchain
-	color_attachment.format = _swapchainImageFormat;
-	//1 sample, we won't be doing MSAA
+	color_attachment.format = _swachainImageFormat;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	// we Clear when this attachment is loaded
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	// we keep the attachment stored when the renderpass ends
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	//we don't care about stencil
 	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-	//we don't know or care about the starting layout of the attachment
 	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	//after the renderpass ends, the image has to be on a layout ready for display
 	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentReference color_attachment_ref = {};
-	//attachment number will index into the pAttachments array in the parent renderpass itself
 	color_attachment_ref.attachment = 0;
 	color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
@@ -696,7 +685,7 @@ void VulkanEngine::init_pipelines()
 
 	vkDestroyShaderModule(_device, meshVertShader, nullptr);
 	vkDestroyShaderModule(_device, colorMeshShader, nullptr);
-		vkDestroyShaderModule(_device, texturedMeshShader, nullptr);
+	vkDestroyShaderModule(_device, texturedMeshShader, nullptr);
 
 	_mainDeletionQueue.push_function([=]() {
 		vkDestroyPipeline(_device, meshPipeline, nullptr);
@@ -829,15 +818,24 @@ void VulkanEngine::upload_mesh(Mesh& mesh)
 		memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
 	vmaUnmapMemory(_allocator, stagingBuffer._allocation);
 
+
+	//allocate vertex buffer
 	VkBufferCreateInfo vertexBufferInfo = {};
 	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	vertexBufferInfo.pNext = nullptr;
-
+	//this is the total size, in bytes, of the buffer we are allocating
 	vertexBufferInfo.size = bufferSize;
+	//this buffer is going to be used as a Vertex Buffer
 	vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+	//let the VMA library know that this data should be gpu native	
 	vmaallocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-	vmaCreateBuffer(_allocator, &vertexBufferInfo, &vmaallocInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr);
+	//allocate the buffer
+	VK_CHECK(vmaCreateBuffer(_allocator, &vertexBufferInfo, &vmaallocInfo,
+		&mesh._vertexBuffer._buffer,
+		&mesh._vertexBuffer._allocation,
+		nullptr));
 
 	immediate_submit([=](VkCommandBuffer cmd) {
 		VkBufferCopy copy;
