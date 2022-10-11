@@ -38,6 +38,13 @@ struct DeletionQueue
 struct Material {
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
+
+	VkDescriptorSet textureSet{VK_NULL_HANDLE}; //texture defaulted to null
+};
+
+struct Texture {
+	AllocatedImage image;
+	VkImageView imageView;
 };
 
 struct RenderObject {
@@ -85,6 +92,12 @@ struct FrameData {
 
 	AllocatedBuffer objectBuffer;
 	VkDescriptorSet objectDescriptor;
+};
+
+struct UploadContext {
+	VkFence _uploadFence;
+	VkCommandPool _commandPool;
+	VkCommandBuffer _commandBuffer;
 };
 
 constexpr unsigned int FRAME_OVERLAP = 2;
@@ -167,6 +180,16 @@ public:
 	FrameData& get_current_frame();
 	FrameData& get_last_frame();
 
+	UploadContext _uploadContext;
+
+	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
+
+	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+
+	std::unordered_map<std::string, Texture> _loadedTextures;
+	
+	VkDescriptorSetLayout _singleTextureSetLayout;
+
 private:
 	void init_vulkan();
 	void init_swapchain();
@@ -179,6 +202,8 @@ private:
 	void init_sync_structures();
 
 	void init_pipelines();
+
+	void load_images();
 
 	void load_meshes();
 	void upload_mesh(Mesh& mesh);
@@ -199,8 +224,6 @@ private:
 
 	//our draw function
 	void draw_objects(VkCommandBuffer cmd,RenderObject* first, int count);
-
-	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
 
 	size_t pad_uniform_buffer_size(size_t originalSize);
 };
