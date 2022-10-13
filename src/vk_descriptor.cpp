@@ -158,3 +158,133 @@ VkDescriptorSetLayout DescriptorLayoutCache::create_descriptor_layout(VkDescript
 		return layout;
 	}
 }
+
+bool DescriptorLayoutCache::DescriptorLayoutInfo::operator==(const DescriptorLayoutInfo& other) const
+{
+	if (other.bindings.size() != bindings.size()){
+		return false;
+	}
+	else {
+		//compare each of the bindings is the same. Bindings are sorted so they will match
+		for (int i = 0; i < bindings.size(); i++) {
+			if (other.bindings[i].binding != bindings[i].binding){
+				return false;
+			}
+			if (other.bindings[i].descriptorType != bindings[i].descriptorType){
+				return false;
+			}
+			if (other.bindings[i].descriptorCount != bindings[i].descriptorCount){
+				return false;
+			}
+			if (other.bindings[i].stageFlags != bindings[i].stageFlags){
+				return false;
+			}
+		}
+		return true;
+	}
+}
+
+size_t DescriptorLayoutCache::DescriptorLayoutInfo::hash() const{
+	using std::size_t;
+	using std::hash;
+
+	size_t result = hash<size_t>()(bindings.size());
+
+	for (const VkDescriptorSetLayoutBinding& b : bindings)
+	{
+		//pack the binding data into a single int64. Not fully correct but it's ok
+		size_t binding_hash = b.binding | b.descriptorType << 8 | b.descriptorCount << 16 | b.stageFlags << 24;
+
+		//shuffle the packed binding data and xor it with the main hash
+		result ^= hash<size_t>()(binding_hash);
+	}
+
+	return result;
+}
+
+DescriptorBuilder DescriptorBuilder::begin(DescriptorLayoutCache *layoutCache, DescriptorAllocator *allocator)
+{
+	DescriptorBuilder builder;
+
+	builder.cache = layoutCache;
+	builder.alloc = allocator;
+	return builder;
+}
+
+DescriptorBuilder& DescriptorBuilder::bind_buffer(uint32_t binding, VkDescriptorBufferInfo *bufferInfo, VkDescriptorType type, VkShaderStageFlags stageFlags)
+{
+	VkDescriptorSetLayoutBinding newBinding {};
+
+	newBinding.descriptorCount = 1;
+	newBinding.descriptorType = type;
+	newBinding.pImmutableSamplers = nullptr;
+	newBinding.stageFlags = stageFlags;
+	newBinding.binding = binding;
+
+	bindings.push_back(newBinding);
+
+	VkWriteDescriptorSet newWrite {};
+	newWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	newWrite.pNext = nullptr;
+
+	newWrite.descriptorCount = 1;
+	newWrite.descriptorType = type;
+	newWrite.pBufferInfo = bufferInfo;
+	newWrite.dstBinding = binding;
+
+	writes.push_back(newWrite);
+	return *this;
+}
+
+DescriptorBuilder& DescriptorBuilder::bind_image(uint32_t binding, VkDescriptorImageInfo *imageInfo, VkDescriptorType type, VkShaderStageFlags stageFlags)
+{
+	VkDescriptorSetLayoutBinding newBinding {};
+
+	newBinding.descriptorCount = 1;
+	newBinding.descriptorType = type;
+	newBinding.pImmutableSamplers = nullptr;
+	newBinding.binding = binding;
+	newBinding.stageFlags = stageFlags;
+
+	bindings.push_back(newBinding);
+
+	VkWriteDescriptorSet newWrite;
+	newWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	newWrite.pNext = nullptr;
+
+	newWrite.descriptorCount = 1;
+	newWrite.descriptorType = type;
+	newWrite.pImageInfo = imageInfo;
+	newWrite.dstBinding = binding;
+
+	writes.push_back(newWrite);
+	return *this;
+}
+
+bool DescriptorBuilder::build(VkDescriptorSet& set, VkDescriptorSetLayout& layout)
+{
+	VkDescriptorSetLayoutCreateInfo layoutInfo {};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.pNext = nullptr;
+
+	layoutInfo.pBindings = bindings.data();
+	layoutInfo.bindingCount = bindings.size();
+
+	layout = cache->create_descriptor_layout(&layoutInfo);
+
+	bool success = alloc->allocate(&set, layout);
+	if (!success) { return false; }
+
+	for (auto& w: writes) {
+		w.dstSet = set;
+	}
+
+	vkUpdateDescriptorSets(alloc->device, writes.size(), writes.data(), 0, nullptr);
+	return true;
+}
+
+bool DescriptorBuilder::build(VkDescriptorSet& set)
+{
+	VkDescriptorSetLayout layout;
+	return build(set, layout);
+}
