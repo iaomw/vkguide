@@ -7,11 +7,12 @@ add_library(vma INTERFACE)
 add_library(stb_image INTERFACE)
 
 add_library(tinyobjloader STATIC)
+add_library(spirv_reflect STATIC)
 
 target_sources(vkbootstrap PRIVATE 
     vkbootstrap/VkBootstrap.h
     vkbootstrap/VkBootstrap.cpp
-    )
+)
 
 target_include_directories(vkbootstrap PUBLIC vkbootstrap)
 target_link_libraries(vkbootstrap PUBLIC Vulkan::Vulkan $<$<BOOL:UNIX>:${CMAKE_DL_LIBS}>)
@@ -23,10 +24,18 @@ target_include_directories(glm INTERFACE glm)
 target_sources(tinyobjloader PRIVATE 
     tinyobjloader/tiny_obj_loader.h
     tinyobjloader/tiny_obj_loader.cc
-    )
-
+)
 target_include_directories(tinyobjloader PUBLIC tinyobjloader)
 
+# target_sources(spirv_reflect PRIVATE 
+#     "${CMAKE_CURRENT_SOURCE_DIR}/spirv_reflect/spirv_reflect.h"
+#     "${CMAKE_CURRENT_SOURCE_DIR}/spirv_reflect/spirv_reflect.c"
+# )
+target_sources(spirv_reflect PRIVATE 
+    spirv_reflect/spirv_reflect.h
+    spirv_reflect/spirv_reflect.c
+)
+target_include_directories(spirv_reflect PUBLIC spirv_reflect)
 
 add_library(sdl2 INTERFACE)
 set(sdl2_DIR "SDL_PATH" CACHE PATH "Path to SDL2")

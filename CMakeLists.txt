@@ -11,7 +11,7 @@ message("${CMAKE_BUILD_TYPE} build")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED)
 
-project ("vulkan_guide")
+project ("vulkan_guide" C CXX)
 find_package(Vulkan REQUIRED)
 
 find_package(SDL2 REQUIRED)
