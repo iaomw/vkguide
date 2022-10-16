@@ -44,6 +44,8 @@ struct ShaderEffect {
 	std::array<VkDescriptorSetLayout, 4> setLayouts;
 	std::array<uint32_t, 4> setHashes;
 
+    VkPipelineLayout builtLayout;
+
 private:
     struct ShaderStage {
         ShaderModule* shaderModule;

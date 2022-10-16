@@ -1,4 +1,5 @@
-#include "spirv_reflect.h"
+#include <spirv_reflect.h>
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -6,7 +7,9 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include <vk_shaders.h>
+#include <vk_initializers.h>
 
 #include <fstream>
 #include <sstream>
@@ -201,5 +204,69 @@ void ShaderEffect::reflect_layout(VkDevice device, ReflectionOverrides *override
 
         std::unordered_map<int, VkDescriptorSetLayoutBinding> binds;
 
+        for (auto& sl : set_layouts) {
+            if (sl.set_number == i) {
+                for (auto& b : sl.bindings) {
+                    auto it = binds.find(b.binding);
+					if (it == binds.end())
+					{
+						binds[b.binding] = b;
+						//ly.bindings.push_back(b);
+					}
+					else {
+						//merge flags
+						binds[b.binding].stageFlags |= b.stageFlags;
+					}
+                } // bindings
+            }
+        }
+
+        for (auto [k, v] : binds)
+		{
+			ly.bindings.push_back(v);
+		}
+		//sort the bindings, for hash purposes
+		std::sort(ly.bindings.begin(), ly.bindings.end(), [](VkDescriptorSetLayoutBinding& a, VkDescriptorSetLayoutBinding& b) {			
+			return a.binding < b.binding;
+		});
+
+
+		ly.create_info.bindingCount = (uint32_t)ly.bindings.size();
+		ly.create_info.pBindings = ly.bindings.data();
+		ly.create_info.flags = 0;
+		ly.create_info.pNext = 0;
+		
+
+		if (ly.create_info.bindingCount > 0) {
+			setHashes[i] = vkutil::hash_descriptor_layout_info(&ly.create_info);
+			vkCreateDescriptorSetLayout(device, &ly.create_info, nullptr, &setLayouts[i]);
+		}
+		else {
+			setHashes[i] = 0;
+			setLayouts[i] = VK_NULL_HANDLE;
+		}
+
     } // DescriptorSetLayoutData
+
+    //we start from just the default empty pipeline layout info
+	VkPipelineLayoutCreateInfo mesh_pipeline_layout_info = vkinit::pipeline_layout_create_info();
+
+	mesh_pipeline_layout_info.pPushConstantRanges = constant_ranges.data();
+	mesh_pipeline_layout_info.pushConstantRangeCount = (uint32_t)constant_ranges.size();
+
+	std::array<VkDescriptorSetLayout,4> compactedLayouts;
+	int s = 0;
+	for (int i = 0; i < 4; i++) {
+		if (setLayouts[i] != VK_NULL_HANDLE) {
+			compactedLayouts[s] = setLayouts[i];
+			s++;
+		}
+	}
+
+	mesh_pipeline_layout_info.setLayoutCount = s;
+	mesh_pipeline_layout_info.pSetLayouts = compactedLayouts.data();
+
+	
+	vkCreatePipelineLayout(device, &mesh_pipeline_layout_info, nullptr, &builtLayout);
+
 }
