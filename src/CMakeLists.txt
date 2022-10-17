@@ -3,6 +3,7 @@ file(GLOB THE_SOURCES CONFIGURE_DEPENDS "*.h" "*.c" "*.cpp")
 add_executable(vulkan_guide ${THE_SOURCES})
 #target_sources(vulkan_guide PUBLIC main.cpp)
 
+add_dependencies(vulkan_guide Shaders)
 
 # set_property(TARGET vulkan_guide PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:vulkan_guide>")
 
@@ -15,4 +16,11 @@ target_link_libraries(vulkan_guide
 
 target_link_libraries(vulkan_guide Vulkan::Vulkan sdl2)
 
-add_dependencies(vulkan_guide Shaders)
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries(vulkan_guide fmt::fmt)
+
+find_package(lz4 CONFIG REQUIRED)
+target_link_libraries(vulkan_guide lz4::lz4)
+
+find_package(nlohmann_json CONFIG REQUIRED)
+target_link_libraries(vulkan_guide nlohmann_json::nlohmann_json)

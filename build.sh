@@ -1,5 +1,9 @@
-export MAKEFLAGS=-j$(($(grep -c "^processor" /proc/cpuinfo) - 1))
+export CMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake
+
+echo $CMAKE_TOOLCHAIN_FILE
 
 cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 
-cmake --build build -j 20 #${MAKEFLAGS}
+export MAKEFLAGS=-j$(nproc)
+
+cmake --build build -j ${MAKEFLAGS}
