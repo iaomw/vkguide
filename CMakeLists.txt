@@ -8,6 +8,11 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 message("${CMAKE_BUILD_TYPE} build")
 
+find_program(HAS_CLANGD "clangd")
+if(HAS_CLANGD)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED)
 
