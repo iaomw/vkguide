@@ -265,7 +265,6 @@ void ShaderEffect::reflect_layout(VkDevice device, ReflectionOverrides *override
 
 	mesh_pipeline_layout_info.setLayoutCount = s;
 	mesh_pipeline_layout_info.pSetLayouts = compactedLayouts.data();
-
 	
 	vkCreatePipelineLayout(device, &mesh_pipeline_layout_info, nullptr, &builtLayout);
 

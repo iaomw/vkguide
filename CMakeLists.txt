@@ -8,13 +8,13 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 message("${CMAKE_BUILD_TYPE} build")
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED)
+
 find_program(HAS_CLANGD "clangd")
 if(HAS_CLANGD)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED)
 
 project ("vulkan_guide" C CXX)
 find_package(Vulkan REQUIRED)
