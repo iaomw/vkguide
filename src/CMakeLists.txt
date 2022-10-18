@@ -25,8 +25,14 @@ target_link_libraries(vulkan_guide Vulkan::Vulkan sdl2)
 # find_package(lz4 CONFIG REQUIRED)
 # target_link_libraries(vulkan_guide lz4::lz4)
 
-# find_package(nlohmann_json CONFIG REQUIRED)
-# target_link_libraries(vulkan_guide nlohmann_json::nlohmann_json)
+find_package(nlohmann_json CONFIG REQUIRED)
+target_link_libraries(vulkan_guide nlohmann_json::nlohmann_json)
+
+find_package(Threads REQUIRED)
+target_link_libraries(vulkan_guide Threads::Threads)
+
+find_package(Tracy CONFIG REQUIRED)
+target_link_libraries(vulkan_guide Tracy::TracyClient)
 
 if(HAS_CLANGD)
     add_custom_command(TARGET vulkan_guide POST_BUILD
