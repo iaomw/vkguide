@@ -411,7 +411,7 @@ void CVarSystemImpl::DrawImguiEditor()
 {
 	static std::string searchText = "";
 
-	ImGui::InputText("Filter", &searchText);
+	//ImGui::InputText("Filter", &searchText);
 	static bool bShowAdvanced = false;
 	ImGui::Checkbox("Advanced", &bShowAdvanced);
 	ImGui::Separator();
@@ -619,7 +619,7 @@ void CVarSystemImpl::EditParameter(CVarParameter* p, float textWidth)
 		else
 		{
 			Label(p->name.c_str(), textWidth);
-			ImGui::InputText("", GetCVarArray<std::string>()->GetCurrentPtr(p->arrayIndex));
+			//ImGui::InputText("", GetCVarArray<std::string>()->GetCurrentPtr(p->arrayIndex));
 
 			ImGui::PopID();
 		}

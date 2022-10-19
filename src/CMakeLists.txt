@@ -19,11 +19,11 @@ target_link_libraries(vulkan_guide Vulkan::Vulkan sdl2)
 # find_package(glm CONFIG REQUIRED)
 # target_link_libraries(vulkan_guide glm::glm)
 
-# find_package(fmt CONFIG REQUIRED)
-# target_link_libraries(vulkan_guide fmt::fmt)
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries(vulkan_guide fmt::fmt)
 
-# find_package(lz4 CONFIG REQUIRED)
-# target_link_libraries(vulkan_guide lz4::lz4)
+find_package(lz4 CONFIG REQUIRED)
+target_link_libraries(vulkan_guide lz4::lz4)
 
 find_package(nlohmann_json CONFIG REQUIRED)
 target_link_libraries(vulkan_guide nlohmann_json::nlohmann_json)
