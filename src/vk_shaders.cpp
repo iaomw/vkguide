@@ -269,3 +269,22 @@ void ShaderEffect::reflect_layout(VkDevice device, ReflectionOverrides *override
 	vkCreatePipelineLayout(device, &mesh_pipeline_layout_info, nullptr, &builtLayout);
 
 }
+
+ShaderModule* ShaderCache::get_shader(const std::string& path)
+{
+	auto it = module_cache.find(path);
+	if (it == module_cache.end())
+	{	
+		ShaderModule newShader;
+
+		bool result = vkutil::load_shader_module(_device, path.c_str(), &newShader);
+		if (!result)
+		{
+			std::cout << "Error when compiling shader " << path << std::endl;
+			return nullptr;
+		}
+
+		module_cache[path] = newShader;
+	}
+	return &module_cache[path];
+}

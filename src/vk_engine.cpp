@@ -50,6 +50,9 @@ void VulkanEngine::init()
 	//load the core Vulkan structures
 	init_vulkan();
 	//create the swapchain
+	_shaderCache.init(_device);
+	//_renderScene.init();
+
 	init_swapchain();
 
 	init_default_renderpass();
@@ -562,14 +565,18 @@ bool VulkanEngine::load_shader_module(const char* filePath, VkShaderModule* outS
 	return true;
 }
 
+static std::string asset_path(std::string_view path)
+{
+	return "../../assets_export/" + std::string(path);
+}
+
+static std::string shader_path(std::string_view path)
+{
+	return "../../shaders/" + std::string(path);
+}
+
 void VulkanEngine::init_pipelines()
 {
-	VkShaderModule colorMeshShader;
-	if (!load_shader_module("../../shaders/default_lit.frag.spv", &colorMeshShader))
-	{
-		std::cout << "Error when building the colored mesh shader" << std::endl;
-	}
-
 	VkShaderModule texturedMeshShader;
 	if (!load_shader_module("../../shaders/textured_lit.frag.spv", &texturedMeshShader)) 
 	{
@@ -581,177 +588,53 @@ void VulkanEngine::init_pipelines()
 	{
 		std::cout << "Error when building the mesh vertex shader module" << std::endl;
 	}
+
+	ShaderEffect* texturedEffect = new ShaderEffect();
+	texturedEffect->add_stage(_shaderCache.get_shader(shader_path("tri_mesh_ssbo.vert.spv")), VK_SHADER_STAGE_VERTEX_BIT);
+	texturedEffect->add_stage(_shaderCache.get_shader(shader_path("textured_lit.frag.spv")), VK_SHADER_STAGE_FRAGMENT_BIT);
+	texturedEffect->reflect_layout(_device, nullptr, 0);
 	
-	//build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
 	PipelineBuilder pipelineBuilder;
 
-	pipelineBuilder._shaderStages.push_back(
-		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, meshVertShader));
-
-	pipelineBuilder._shaderStages.push_back(
-		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, colorMeshShader));
-
-	//we start from just the default empty pipeline layout info
-	VkPipelineLayoutCreateInfo mesh_pipeline_layout_info = vkinit::pipeline_layout_create_info();
-
-		//setup push constants
-		VkPushConstantRange push_constant;
-		//offset 0
-		push_constant.offset = 0;
-		//size of a MeshPushConstant struct
-		push_constant.size = sizeof(MeshPushConstants);
-		//for the vertex shader
-		push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-		mesh_pipeline_layout_info.pPushConstantRanges = &push_constant;
-		mesh_pipeline_layout_info.pushConstantRangeCount = 1;
-
-	VkDescriptorSetLayout setLayouts[] = { _globalSetLayout, _objectSetLayout };
-
-	mesh_pipeline_layout_info.setLayoutCount = 2;
-	mesh_pipeline_layout_info.pSetLayouts = setLayouts;
-
-	VkPipelineLayout meshPipLayout;
-	VK_CHECK(vkCreatePipelineLayout(_device, &mesh_pipeline_layout_info, nullptr, &meshPipLayout));
-
-	//hook the push constants layout
-	pipelineBuilder._pipelineLayout = meshPipLayout;
-
-	//vertex input controls how to read vertices from vertex buffers. We arent using it yet
-	pipelineBuilder._vertexInputInfo = vkinit::vertex_input_state_create_info();
-
-	//input assembly is the configuration for drawing triangle lists, strips, or individual points.
-	//we are just going to draw triangle list
 	pipelineBuilder._inputAssembly = vkinit::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-
-	//build viewport and scissor from the swapchain extents
-	pipelineBuilder._viewport.x = 0.0f;
-	pipelineBuilder._viewport.y = 0.0f;
-	pipelineBuilder._viewport.width = (float)_windowExtent.width;
-	pipelineBuilder._viewport.height = (float)_windowExtent.height;
-	pipelineBuilder._viewport.minDepth = 0.0f;
-	pipelineBuilder._viewport.maxDepth = 1.0f;
-
-	pipelineBuilder._scissor.offset = { 0, 0 };
-	pipelineBuilder._scissor.extent = _windowExtent;
-
-	//configure the rasterizer to draw filled triangles
 	pipelineBuilder._rasterizer = vkinit::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
-
-	//we don't use multisampling, so just run the default one
 	pipelineBuilder._multisampling = vkinit::multisampling_state_create_info();
 
-	//a single blend attachment with no blending and writing to RGBA
 	pipelineBuilder._colorBlendAttachment = vkinit::color_blend_attachment_state();
-
-	//default depthtesting
 	pipelineBuilder._depthStencil = vkinit::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+
+	pipelineBuilder.setShaderEffect(texturedEffect);
+
+	pipelineBuilder._vertexInputInfo = vkinit::vertex_input_state_create_info();
 
 	VertexInputDescription vertexDescription = Vertex::get_vertex_description();
 
-	//connect the pipeline builder vertex input info to the one we get from Vertex
-	pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
-	pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
+		//connect the pipeline builder vertex input info to the one we get from Vertex
+		pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
+		pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
 
-	pipelineBuilder._vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
-	pipelineBuilder._vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
+		pipelineBuilder._vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
+		pipelineBuilder._vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
+		
+		//build viewport and scissor from the swapchain extents
+		pipelineBuilder._viewport.x = 0.0f;
+		pipelineBuilder._viewport.y = 0.0f;
+		pipelineBuilder._viewport.width = (float)_windowExtent.width;
+		pipelineBuilder._viewport.height = (float)_windowExtent.height;
+		pipelineBuilder._viewport.minDepth = 0.0f;
+		pipelineBuilder._viewport.maxDepth = 1.0f;
 
-	//build the mesh triangle pipeline
-	VkPipeline meshPipeline = pipelineBuilder.build_pipeline(_device, _renderPass);
-	create_material(meshPipeline, meshPipLayout, "defaultmesh");
+		pipelineBuilder._scissor.offset = { 0, 0 };
+		pipelineBuilder._scissor.extent = _windowExtent;
 
-		//we start from  the normal mesh layout
-		VkPipelineLayoutCreateInfo textured_pipeline_layout_info = mesh_pipeline_layout_info;
-			
-		VkDescriptorSetLayout texturedSetLayouts[] = { _globalSetLayout, _objectSetLayout, _singleTextureSetLayout};
+		auto texturedPipeline = pipelineBuilder.build_pipeline(_device, _renderPass);
+		auto texturedPipeLayout = texturedEffect->builtLayout;
 
-		textured_pipeline_layout_info.setLayoutCount = 3;
-		textured_pipeline_layout_info.pSetLayouts = texturedSetLayouts;
+		_mainDeletionQueue.push_function([=]() {
 
-		VkPipelineLayout texturedPipeLayout;
-		VK_CHECK(vkCreatePipelineLayout(_device, &textured_pipeline_layout_info, nullptr, &texturedPipeLayout));
-
-		//create pipeline for textured drawing
-		pipelineBuilder._shaderStages.clear();
-		pipelineBuilder._shaderStages.push_back(
-			vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, meshVertShader));
-		pipelineBuilder._shaderStages.push_back(
-			vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, texturedMeshShader));
-
-		pipelineBuilder._pipelineLayout = texturedPipeLayout;
-		VkPipeline texPipeline = pipelineBuilder.build_pipeline(_device, _renderPass);
-
-		create_material(texPipeline, texturedPipeLayout, "texturedmesh");
-
-	vkDestroyShaderModule(_device, meshVertShader, nullptr);
-	vkDestroyShaderModule(_device, colorMeshShader, nullptr);
-	vkDestroyShaderModule(_device, texturedMeshShader, nullptr);
-
-	_mainDeletionQueue.push_function([=]() {
-		vkDestroyPipeline(_device, meshPipeline, nullptr);
-		vkDestroyPipelineLayout(_device, meshPipLayout, nullptr);
-
-		vkDestroyPipeline(_device, texPipeline, nullptr);
-		vkDestroyPipelineLayout(_device, texturedPipeLayout, nullptr);
-	});
-}
-
-VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
-{
-	//make viewport state from our stored viewport and scissor.
-		//at the moment we wont support multiple viewports or scissors
-	VkPipelineViewportStateCreateInfo viewportState = {};
-	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewportState.pNext = nullptr;
-
-	viewportState.viewportCount = 1;
-	viewportState.pViewports = &_viewport;
-	viewportState.scissorCount = 1;
-	viewportState.pScissors = &_scissor;
-
-	//setup dummy color blending. We aren't using transparent objects yet
-	//the blending is just "no blend", but we do write to the color attachment
-	VkPipelineColorBlendStateCreateInfo colorBlending = {};
-	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	colorBlending.pNext = nullptr;
-
-	colorBlending.logicOpEnable = VK_FALSE;
-	colorBlending.logicOp = VK_LOGIC_OP_COPY;
-	colorBlending.attachmentCount = 1;
-	colorBlending.pAttachments = &_colorBlendAttachment;
-
-	//build the actual pipeline
-	//we now use all of the info structs we have been writing into into this one to create the pipeline
-	VkGraphicsPipelineCreateInfo pipelineInfo = {};
-	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.pNext = nullptr;
-
-	pipelineInfo.stageCount = _shaderStages.size();
-	pipelineInfo.pStages = _shaderStages.data();
-	pipelineInfo.pVertexInputState = &_vertexInputInfo;
-	pipelineInfo.pInputAssemblyState = &_inputAssembly;
-	pipelineInfo.pViewportState = &viewportState;
-	pipelineInfo.pRasterizationState = &_rasterizer;
-	pipelineInfo.pMultisampleState = &_multisampling;
-	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.pDepthStencilState = &_depthStencil;
-
-	pipelineInfo.layout = _pipelineLayout;
-	pipelineInfo.renderPass = pass;
-	pipelineInfo.subpass = 0;
-	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-	
-	//it's easy to error out on create graphics pipeline, so we handle it a bit better than the common VK_CHECK case
-	VkPipeline newPipeline;
-	if (vkCreateGraphicsPipelines(
-		device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline) != VK_SUCCESS) {
-		std::cout << "failed to create pipeline\n";
-		return VK_NULL_HANDLE; // failed to create graphics pipeline
-	}
-	else
-	{
-		return newPipeline;
-	}
+			vkDestroyPipeline(_device, texturedPipeline, nullptr);
+			//vkDestroyPipelineLayout(_device, texturedPipeLayout, nullptr);
+		});
 }
 
 void VulkanEngine::load_meshes()

@@ -1,10 +1,10 @@
-﻿// vulkan_guide.h : Include file for standard system include files,
-// or project specific include files.
+﻿#pragma once
 
-#pragma once
-
-//#include <vk_types.h>
 #include <vk_mesh.h>
+#include <vk_types.h>
+#include <vk_shaders.h>
+#include <vk_pipeline.h>
+
 #include "VkBootstrap.h"
 
 #include <glm/glm.hpp>
@@ -16,6 +16,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <string_view>
 
 struct DeletionQueue
 {
@@ -129,6 +130,9 @@ public:
 	//array of image-views from the swapchain
 	std::vector<VkImageView> _swapchainImageViews;
 
+	ShaderCache _shaderCache;
+	//RenderScene _renderScene;
+
 	VkQueue _graphicsQueue; //queue we will submit to
 	uint32_t _graphicsQueueFamily; //family of that queue
 
@@ -226,24 +230,4 @@ private:
 	void draw_objects(VkCommandBuffer cmd,RenderObject* first, int count);
 
 	size_t pad_uniform_buffer_size(size_t originalSize);
-};
-
-
-class PipelineBuilder {
-public:
-
-	std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
-	VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
-	VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
-	VkPipelineDepthStencilStateCreateInfo _depthStencil;
-
-	VkViewport _viewport;
-	VkRect2D _scissor;
-
-	VkPipelineRasterizationStateCreateInfo _rasterizer;
-	VkPipelineColorBlendAttachmentState _colorBlendAttachment;
-	VkPipelineMultisampleStateCreateInfo _multisampling;
-	VkPipelineLayout _pipelineLayout;
-
-	VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
 };
