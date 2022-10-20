@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "vk_shaders.h"
 #include <vk_types.h>
 
 #include <deque>
@@ -63,7 +64,9 @@ struct MeshPushConstants {
 struct Material {
 	VkDescriptorSet textureSet{VK_NULL_HANDLE};
 	VkPipeline pipeline;
-	VkPipelineLayout pipelineLayout;
+	//VkPipelineLayout pipelineLayout;
+
+	struct ShaderEffect* effect;
 };
 
 struct Texture {
@@ -96,6 +99,8 @@ struct FrameData {
 
 	AllocatedBuffer objectBuffer;
 	VkDescriptorSet objectDescriptor;
+
+	VkDescriptorPool _dynamicDescriptorPool;
 };
 
 struct UploadContext {
@@ -215,7 +220,7 @@ public:
 	//functions
 
 	//create material and add it to the map
-	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
+	Material* create_material(VkPipeline pipeline, ShaderEffect* effect, const std::string& name);
 
 	//returns nullptr if it cant be found
 	Material* get_material(const std::string& name);
