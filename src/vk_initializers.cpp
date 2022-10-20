@@ -1,6 +1,6 @@
 ﻿#include <vk_initializers.h>
 
-VkCommandPoolCreateInfo vkinit::command_pool_create_info(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags flags /*= 0*/)
+VkCommandPoolCreateInfo vkinit::command_pool_create_info(uint32_t queueFamilyIndex, VkCommandPoolResetFlags flags /*= 0*/)
 {
 	VkCommandPoolCreateInfo info = {};
 	info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -30,23 +30,6 @@ VkCommandBufferBeginInfo vkinit::command_buffer_begin_info(VkCommandBufferUsageF
 
 	info.pInheritanceInfo = nullptr;
 	info.flags = flags;
-	return info;
-}
-
-VkSubmitInfo vkinit::submit_info(VkCommandBuffer* cmd)
-{
-	VkSubmitInfo info = {};
-	info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	info.pNext = nullptr;
-
-	info.waitSemaphoreCount = 0;
-	info.pWaitSemaphores = nullptr;
-	info.pWaitDstStageMask = nullptr;
-	info.commandBufferCount = 1;
-	info.pCommandBuffers = cmd;
-	info.signalSemaphoreCount = 0;
-	info.pSignalSemaphores = nullptr;
-
 	return info;
 }
 
@@ -82,6 +65,23 @@ VkSemaphoreCreateInfo vkinit::semaphore_create_info(VkSemaphoreCreateFlags flags
 	info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	info.pNext = nullptr;
 	info.flags = flags;
+	return info;
+}
+
+VkSubmitInfo vkinit::submit_info(VkCommandBuffer* cmd)
+{
+	VkSubmitInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	info.pNext = nullptr;
+
+	info.waitSemaphoreCount = 0;
+	info.pWaitSemaphores = nullptr;
+	info.pWaitDstStageMask = nullptr;
+	info.commandBufferCount = 1;
+	info.pCommandBuffers = cmd;
+	info.signalSemaphoreCount = 0;
+	info.pSignalSemaphores = nullptr;
+
 	return info;
 }
 
@@ -131,7 +131,6 @@ VkPipelineShaderStageCreateInfo vkinit::pipeline_shader_stage_create_info(VkShad
 	info.pName = "main";
 	return info;
 }
-
 VkPipelineVertexInputStateCreateInfo vkinit::vertex_input_state_create_info() {
 	VkPipelineVertexInputStateCreateInfo info = {};
 	info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -153,7 +152,6 @@ VkPipelineInputAssemblyStateCreateInfo vkinit::input_assembly_create_info(VkPrim
 	info.primitiveRestartEnable = VK_FALSE;
 	return info;
 }
-
 VkPipelineRasterizationStateCreateInfo vkinit::rasterization_state_create_info(VkPolygonMode polygonMode)
 {
 	VkPipelineRasterizationStateCreateInfo info = {};
@@ -177,7 +175,6 @@ VkPipelineRasterizationStateCreateInfo vkinit::rasterization_state_create_info(V
 
 	return info;
 }
-
 VkPipelineMultisampleStateCreateInfo vkinit::multisampling_state_create_info()
 {
 	VkPipelineMultisampleStateCreateInfo info = {};
@@ -193,7 +190,6 @@ VkPipelineMultisampleStateCreateInfo vkinit::multisampling_state_create_info()
 	info.alphaToOneEnable = VK_FALSE;
 	return info;
 }
-
 VkPipelineColorBlendAttachmentState vkinit::color_blend_attachment_state() {
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
@@ -201,7 +197,6 @@ VkPipelineColorBlendAttachmentState vkinit::color_blend_attachment_state() {
 	colorBlendAttachment.blendEnable = VK_FALSE;
 	return colorBlendAttachment;
 }
-
 VkPipelineLayoutCreateInfo vkinit::pipeline_layout_create_info() {
 	VkPipelineLayoutCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -283,7 +278,6 @@ VkDescriptorSetLayoutBinding vkinit::descriptorset_layout_binding(VkDescriptorTy
 
 	return setbind;
 }
-
 VkWriteDescriptorSet vkinit::write_descriptor_buffer(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo , uint32_t binding)
 {
 	VkWriteDescriptorSet write = {};
@@ -299,21 +293,6 @@ VkWriteDescriptorSet vkinit::write_descriptor_buffer(VkDescriptorType type, VkDe
 	return write;
 }
 
-VkSamplerCreateInfo vkinit::sampler_create_info(VkFilter filters, VkSamplerAddressMode samplerAddressMode /*= VK_SAMPLER_ADDRESS_MODE_REPEAT*/)
-{
-	VkSamplerCreateInfo info = {};
-	info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	info.pNext = nullptr;
-
-	info.magFilter = filters;
-	info.minFilter = filters;
-	info.addressModeU = samplerAddressMode;
-	info.addressModeV = samplerAddressMode;
-	info.addressModeW = samplerAddressMode;
-
-	return info;
-}
-
 VkWriteDescriptorSet vkinit::write_descriptor_image(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorImageInfo* imageInfo, uint32_t binding)
 {
 	VkWriteDescriptorSet write = {};
@@ -327,4 +306,19 @@ VkWriteDescriptorSet vkinit::write_descriptor_image(VkDescriptorType type, VkDes
 	write.pImageInfo = imageInfo;
 
 	return write;
+}
+
+VkSamplerCreateInfo vkinit::sampler_create_info(VkFilter filters, VkSamplerAddressMode samplerAdressMode /*= VK_SAMPLER_ADDRESS_MODE_REPEAT*/)
+{
+	VkSamplerCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	info.pNext = nullptr;
+
+	info.magFilter = filters;
+	info.minFilter = filters;
+	info.addressModeU = samplerAdressMode;
+	info.addressModeV = samplerAdressMode;
+	info.addressModeW = samplerAdressMode;
+
+	return info;
 }
