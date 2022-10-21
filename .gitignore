@@ -2,7 +2,7 @@
 *.d
 # .json
 .cache/
-build/*
+build/
 
 # Compiled Object files
 *.slo
